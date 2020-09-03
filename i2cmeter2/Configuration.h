@@ -17,7 +17,7 @@ WC8C, Dennis Cabell
 ///////////////////////////////
 // S-Meter Calibration
 ///////////////////////////////
-#define SMETER_GAIN ((float)1.5)   // lower number to increase the S-Meter reading
+#define SMETER_GAIN ((float)1.0)   // lower number to increase the S-Meter reading
 
 ///////////////////////////////
 // Power SWR meter calibration
