@@ -41,11 +41,11 @@ void setup()
   Wire.onReceive(I2CReceiveEvent);        //
   Wire.onRequest(I2CRequestEvent);
   
-  Serial.begin(9600, SERIAL_8N1);
+  Serial.begin(SERIAL_SPEED, SERIAL_8N1);
   Serial.flush();
   
   #ifdef USE_SW_SERIAL
-    SERIAL_OUTPUT.begin(9600);
+    SERIAL_OUTPUT.begin(SERIAL_SPEED);
   #endif
     
   nextion.Initialize();

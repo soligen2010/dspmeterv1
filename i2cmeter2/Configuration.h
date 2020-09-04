@@ -11,6 +11,18 @@ WC8C, Dennis Cabell
 // comment this line out of you want to run hardware serial (wire to pin 0 instead of pin 9)
 #define USE_SW_SERIAL
 
+///////////////////////////////////////////////////
+// To use a speed other than 9600, you must modify the Raduino CEC firmware and 
+// the Nextion formware to use the same speed.
+//
+// In the CEC firmware, the speed is in the LCDNextion_Init() in the ubitx_lcd_nextion file
+//
+// For the nextion, in the Nextion editor on the pboot in the Event Postinitialization 
+// put baud=<rate> on the first line, for example baud=57600
+///////////////////////////////////////////////////
+//#define SERIAL_SPEED 57600
+#define SERIAL_SPEED 9600
+
 // comment this line out if you dont have the power/swr meter lines connected
 #define ENABLE_POWER_SWR_METER
 
