@@ -7,6 +7,8 @@ The other person's source code (CW Morse code) follows the original author's lic
 
 Ian KD8CEC
 
+dspmeterv1 is the original code from Dr. Lee, kept here for reference.
+
 # dspmeterv2
 This is a large re-working of Dr. Lee's original dspmeterv1 code.  I created a new folder for this because
 the changes are so extensive.
@@ -15,19 +17,19 @@ To use this version you should be familiar with using the Arduino IDE and flashi
 
 ## Change Goals
 I began with a several goals:
-- Get the the CW Decode to work for me
+- Get the the CW Decode to work for me, and possibly improve it
 - Free memory so I can add some future new functionality I have in mind
 - Integrate my Power and SWR meter changes.  I originally developed this before Dr. Lee released his. I wish I would have uploaded it sooner to save him some effort.
 - Re-organize the code to make it easier to follow and modify/extend
 
 In the process of pursuing these, I modified quite a lot of miscellaneous things.
 
-## Change Summary
+## V2 Summary
 ### CW Decode
 I re-arranged the decode checks so that the longer dit-dah sequences are checked first, and changed to compare to match against the end of the decoded dit-dah string.
 What this does is sometimes allow a match to be found if the previous character spacing is missed.  So, for example, if two letters are run together
 instead of finding no match, there will be a match on the second letter. After this, the remaining dit-dah sequences are kept to attempt to get the previous character from the sequence.
-DEcoding when a character space is missed is a highly ambiguous situation, and this is an attempt to occasionally still get a correct decode.
+Decoding when a character space is missed is a highly ambiguous situation, and this is an attempt to occasionally still get a correct decode.
 
 The dit-dah buffer was exposed to a potential buffer over-run situation.  I protected against this and was able to reduce the size of the buffer to save some RAM.
 
@@ -87,12 +89,10 @@ the sketch.  To do this you have to wire pin 0 to the Nextion instead of pin 9. 
 
 As a side note, I also installed a switch to disconnect pin 1 from the Raduino while flashing.
 
-## S-Meter Boost Circuit
-Included is a schematic of the op amp circuit I used to increase the level of the VOL-HIGH input.  I noticed that lower level signals seemed to have very low resolution in the ADC.  By amplifying the signal, there is more resolution at the low end, but it maxes out the high end sooner.  I also added a Zener diode to protect the ADC input.  The amplification is compensated by adjusting the #define SMETER_GAIN in i2cmeter2.h (raise the number to lower the displayed value.)  To calibrate, feed the radio an S9 level signal and adjust the value until the meter just passes the S9 reading.
+### Faster Serial Speed
+Normally, the Nextion runs at 9600 baud.  I run at 57600 baud.  To do this you need to change the Raduino and Nextion firmware (see notes in Configuration.h) in addition to the dspmeter configuration.  
 
-The SMETER_GAIN setting I used for my uBitx V4 board with the op-amp circuit is 1.5.  Since I have made come mods to my uBitx, your calibration may vary.
-
-With the op amp circuit I used, the ADC maxes out at about S9 + 10db.  However, I run an AGC, and with the AGC turned on, the ADC doesn't max out.  Ideally I think the SMeter should be calibrated without the AGC, but you can do it either way at your preference.
+The increased speed improves the UI responsiveness a little.  More significantly for me, when running at 9600 baud what I assume is noise would interferes with my CAT control to WSJT-X.  At 57600 the interference seems to be cured.
 
 ### Miscellaneous
 Frequency changes seemed to lag a bit when the spectrum was on the main screen.  Changed so that any communication incoming from the uBix will cancel other communication processes so that these commands get forwarded quicker.  This helps the frequency changes to be more responsive when the spectrum is on the display, but the spectrum display pauses while changing frequency.
@@ -102,6 +102,13 @@ Performance improvements and code streamlining in many places.
 Encapsulated many things in classes and re-factored some of the functional dependencies.
 
 In may cases there needs to be at least a 50ms delay after certain commands to allow the Nextion to process the previous command.  I changed the way this is done and enforced the delay for all commands (except sending FFT which didn't seem to need it).  I also reduced the delay timer to 75ms. which seems adequate (it formerly was 159, but not implemented everywhere).  If you have odd Nextion update issues (I had some when I tried running at 50ms) you can try increasing #define LAST_TIME_INTERVAL in NextionProtocol.h.
+
+## S-Meter Boost Circuit
+Included is a schematic of the op amp circuit I used to increase the level of the VOL-HIGH input.  I noticed that lower level signals seemed to have very low resolution in the ADC.  By amplifying the signal, there is more resolution at the low end, but it maxes out the high end sooner.  I also added a Zener diode to protect the ADC input.  The amplification is compensated by adjusting the #define SMETER_GAIN in i2cmeter2.h (raise the number to lower the displayed value.)  To calibrate, feed the radio an S9 level signal and adjust the value until the meter just passes the S9 reading.
+
+The SMETER_GAIN setting I used for my uBitx V4 board with the op-amp circuit is 1.5.  Since I have made come mods to my uBitx, your calibration may vary.
+
+With the op amp circuit I used, the ADC maxes out at about S9 + 10db.  However, I run an AGC, and with the AGC turned on, the ADC doesn't max out.  Ideally I think the SMeter should be calibrated without the AGC, but you can do it either way at your preference.
 
 ## License
 I follow the same license terms as Dr. Lee. I do not claim any license for this code.
