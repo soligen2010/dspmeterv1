@@ -1,4 +1,4 @@
-# dspmeterv1
+# i2cmeter1
 Standalone Signal Analyzer (I2C Type Signal-Meter) for uBITX - Arduino Nano Version
 
 I do not claim any license for my code.
@@ -7,9 +7,9 @@ The other person's source code (CW Morse code) follows the original author's lic
 
 Ian KD8CEC
 
-dspmeterv1 is the original code from Dr. Lee, kept here for reference.
+i2cmeter1 is the original code from Dr. Lee, kept here for reference.
 
-# dspmeterv2
+# i2cmeter2
 This is a large re-working of Dr. Lee's original dspmeterv1 code.  I created a new folder for this because
 the changes are so extensive.
 
