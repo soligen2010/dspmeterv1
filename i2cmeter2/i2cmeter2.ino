@@ -137,7 +137,7 @@ void loop()
     {
       nextion.SendScaledSMeter(FastMeterToUartInterval);
     }
-    else if (nextion.DSPType == 1) //Spectrum : FFT => Send To UART
+    else if (nextion.DSPType == 1 && nextion.LastSendWaitTimeElapsed()) //Spectrum : FFT => Send To UART
     {
       nextion.SendScaledSMeter(FFTMeterToUartInterval);
       nextion.SendFFTData(SAMPLESIZE, FFTReal); // if new data comes in, the send gets aborted and control returns so the loop can be started over.
@@ -241,19 +241,23 @@ void I2CRequestEvent(void)
   else if (command == I2CMETER_CALCP)    // POWER
   {
     int value = 0;
-    if (nextion.TXStatus == 1 || !nextion.nextionIsConnected)  //TX Mode or there isn't a nextion
-    {
-      value = powerSwrCalculator.powerIn;
-    }
+    #ifdef ENABLE_POWER_SWR_METER
+      if (nextion.TXStatus == 1 || !nextion.nextionIsConnected)  //TX Mode or there isn't a nextion
+      {
+        value = powerSwrCalculator.powerIn;
+      }
+    #endif
     Wire.write(value);  //POWER
   }
   else if (command == I2CMETER_CALCR)        // REV POWER
   {
     int value = 0;
-    if (nextion.TXStatus == 1 || !nextion.nextionIsConnected)  //TX Mode or there isn't a nextion
-    {
-      value = powerSwrCalculator.revPowerIn;
-    }
+    #ifdef ENABLE_POWER_SWR_METER
+      if (nextion.TXStatus == 1 || !nextion.nextionIsConnected)  //TX Mode or there isn't a nextion
+      {
+        value = powerSwrCalculator.revPowerIn;
+      }
+    #endif
     Wire.write(value);  //Reverse Power
   }
 }
