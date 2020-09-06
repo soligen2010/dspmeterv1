@@ -12,6 +12,7 @@
 // Original algorithm values are:
 // -------------------------------------
 // NOISE_BLANKER_MS                  6    
+//#define MAX_HIGH_DURATION_MS - not in previous version
 // MAGNATUDE_MOVING_AVERAGE_SIZE     6    
 // HIGH_TIME_MOVING_AVERAGE_SIZE     3   
 // WORDS_PER_MIN_MOVING_AVERAGE_SIZE 2    
@@ -23,12 +24,13 @@
 // WPM_30_LACK_TIME                  1.2   
 // WPM_35_LACK_TIME                  1.3  
 ////////////////////////////////////////////////
-#define NOISE_BLANKER_MS                  6     // baud less than this duration are ignored
+#define NOISE_BLANKER_MS                  6     // Milliseconds.  baud less than this duration are ignored
+#define MAX_HIGH_DURATION_MS              3000  // Milliseconds.  baud greater than this are excluded from the moving average calulation for code speed
 #define MAGNATUDE_MOVING_AVERAGE_SIZE     6     // Raising this makes the expected magnatude of high state self adjust more slowly.  Must be > 1
 #define HIGH_TIME_MOVING_AVERAGE_SIZE     3     // Raising this makes the expected dit-dah duration self adjust more slowly.  Must be > 1
 #define WORDS_PER_MIN_MOVING_AVERAGE_SIZE 2     // Raising this makes the high WPM lacktime adjust more slowly.  Must be > 1
 #define DIT_MINIMUM_SIZE                  0.6   // High time must be at least this percentage of the average high time to be a dit
-#define DAH_MAXIMUM_SIZE                  6     // High time must be at below this percentage of the average high time to be a dah
+#define DAH_MAXIMUM_SIZE                  6     // High time must be at below this percentage of the average high time to be a dah, thsi triggers a decode and resets the baud collection
 #define MAGNATUDE_HIGH_THRESHOLD          0.6   // Signals above this percent of magnatude are interpreted as HIGH
 #define DEFAULT_LACK_TIME                 1.0   // Adjusts how much space is expected between characters and words. < 25 WPM
 #define WPM_25_LACK_TIME                  1.0   // 25 - 30 WPM

@@ -182,7 +182,7 @@ void CWDecoder::Decode_Morse(float magnitude, int magnitudelimit_low)
   static unsigned long startttimelow;
   static unsigned long lowduration;
   
-  static int magnitudelimit = 30;
+  static float magnitudelimit = 30;
   static char realstatebefore = LOW;
   static char filteredstate = LOW;
   static char filteredstatebefore = LOW;
@@ -199,12 +199,13 @@ void CWDecoder::Decode_Morse(float magnitude, int magnitudelimit_low)
   //magnitudelimit auto Increase
   if (magnitude > magnitudelimit_low)
   {
-    magnitudelimit = constrain((magnitudelimit + ((magnitude - magnitudelimit) / MAGNATUDE_MOVING_AVERAGE_SIZE))
+    magnitudelimit = constrain(
+                                 (magnitudelimit + ((magnitude - magnitudelimit) / (float)MAGNATUDE_MOVING_AVERAGE_SIZE))  /// moving average filter (Single pole low pass filter)
                                , (float)magnitudelimit_low
-                               , 32000.0);  /// moving average filter
+                               , 32000.0); 
   }
   
-  realstate = (magnitude > (float)magnitudelimit * MAGNATUDE_HIGH_THRESHOLD) ? HIGH : LOW;
+  realstate = (magnitude > magnitudelimit * (float)MAGNATUDE_HIGH_THRESHOLD) ? HIGH : LOW;
 
   if (realstate != realstatebefore)
     laststarttime = currentTime;
@@ -226,15 +227,18 @@ void CWDecoder::Decode_Morse(float magnitude, int magnitudelimit_low)
     {
       startttimelow = currentTime;
       highduration = (currentTime - starttimehigh);
-      
-      if (highduration < (2 * hightimesavg) || hightimesavg == 0)
+
+      if (highduration < MAX_HIGH_DURATION_MS)
       {
-        hightimesavg = (highduration + (hightimesavg * ((long)HIGH_TIME_MOVING_AVERAGE_SIZE - 1L))) / (long)HIGH_TIME_MOVING_AVERAGE_SIZE;     // now we know avg dit time ( rolling HIGH_TIME_MOVING_AVERAGE_SIZE avg)
-      }
-      
-      if (highduration > (5 * hightimesavg) )
-      {
-        hightimesavg = highduration + hightimesavg;     // if speed decrease fast ..
+        if (highduration < (2 * hightimesavg) || hightimesavg == 0)
+        {
+          hightimesavg = (highduration + (hightimesavg * ((long)HIGH_TIME_MOVING_AVERAGE_SIZE - 1L))) / (long)HIGH_TIME_MOVING_AVERAGE_SIZE;     // now we know avg dit time ( rolling avg)
+        }
+        
+        if (highduration > (5 * hightimesavg) )
+        {
+          hightimesavg = highduration + hightimesavg;     // if speed decrease fast ..
+        }
       }
     }
   }
@@ -254,12 +258,19 @@ void CWDecoder::Decode_Morse(float magnitude, int magnitudelimit_low)
       {
         strcat(code,".");
       }
-      if (highduration > (hightimesavg*2) && highduration < (hightimesavg * DAH_MAXIMUM_SIZE ))
+      else if (highduration > (hightimesavg*2) && highduration < (hightimesavg * DAH_MAXIMUM_SIZE ))
       {
         strcat(code,"-");
-        wpm = constrain((uint8_t)(((long)wpm * ((long)WORDS_PER_MIN_MOVING_AVERAGE_SIZE - 1L) + (1200L * 3L / highduration)) / (long)WORDS_PER_MIN_MOVING_AVERAGE_SIZE)
+        wpm = constrain(
+                          (uint8_t)(((long)wpm * ((long)WORDS_PER_MIN_MOVING_AVERAGE_SIZE - 1L) + (1200L * 3L / highduration)) / (long)WORDS_PER_MIN_MOVING_AVERAGE_SIZE)  // the most precise we can do ;o)
                         , 1
-                        , 255);  //// the most precise we can do ;o)
+                        , 255);  
+      }
+      else
+      {
+        // DAH is too long, so things are ambiguous.  try to decode what we have then start over
+        docode(code);
+        code[0] = '\0';
       }
     }
     
