@@ -87,8 +87,8 @@ class NextionProtocol
   void SendCommandL(char varIndex, long sendValue);
   void SendCommandStr(char varIndex, char* sendValue);
   void SendCommand1Num(char varType, char sendValue); //0~9 : Mode, nowDisp, ActiveVFO, IsDialLock, IsTxtType, IsSplitType
-  void SendCommandEnding();
-  void SendCommandStrEnding();
+  void SendCommandEnding(char varIndex);
+  void SendCommandStrEnding(char varIndex);
   bool SendDecodeCharacters(char *characters);
   int ForwardData(void);
   void SendScaledSMeter(int meterToUartInterval);

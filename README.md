@@ -37,6 +37,8 @@ Changed saved timer variables so that timer rollovers are handled properly. Code
 
 The constants that control the algorithm are now in CWDecoder.h so experimentation with these is much easier.
 
+Added filter to ignore long high states so moving averages are not skewed too badly.  Also a DAH that is too long triggers an attempt to decode and resets the DIT_DAH collection.
+
 ### Freeing Memory
 I removed use of global variables wherever possible,  I changed use of byte arrays for constants to strings using the F macro to store them in PROGMEM.
 I did not change the dit-dah constants to use the F macro because there are a lot of compares and I didn't want to slow it down too much.  Reduced the memory needed for FFT (see the FFT section for more details).

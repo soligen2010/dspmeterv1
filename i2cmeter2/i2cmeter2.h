@@ -49,8 +49,8 @@ License: Same as origial code.
 #define I2CMETER_UNCALCP  0x56 //UnCalculated Power Meter
 
 //SWR
-#define I2CMETER_CALCR    0x55 //Calculated SWR Meter
-#define I2CMETER_UNCALCR  0x54 //Uncalculated SWR Meter
+#define I2CMETER_CALCR    0x55 //Calculated Reversse Power Meter
+#define I2CMETER_UNCALCR  0x54 //Uncalculated Reversse Power Meter
 
 #define SIGNAL_METER_ADC  A7
 #define POWER_METER_ADC   A3

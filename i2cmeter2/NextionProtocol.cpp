@@ -64,6 +64,15 @@ void NextionProtocol::SendHeader(char varType, char varIndex)
   }
 }
 
+void NextionProtocol::SendCommand1Num(char varIndex, char sendValue) //0~9 : Mode, nowDisp, ActiveVFO, IsDialLock, IsTxtType, IsSplitType
+{
+  SERIAL_OUTPUT.print(F("pm.c"));
+  SERIAL_OUTPUT.write(varIndex);
+  SERIAL_OUTPUT.print(F(".val="));
+  SERIAL_OUTPUT.write(sendValue + 0x30);
+  SendCommandEnding(varIndex);
+}
+
 void NextionProtocol::SendCommandUL(char varIndex, unsigned long sendValue)
 {
   SendHeader(SWS_HEADER_INT_TYPE, varIndex);
@@ -71,7 +80,7 @@ void NextionProtocol::SendCommandUL(char varIndex, unsigned long sendValue)
   char softTemp[12] = { 0 };
   ultoa(sendValue, softTemp, DEC);
   SERIAL_OUTPUT.print(softTemp);
-  SendCommandEnding();
+  SendCommandEnding(varIndex);
 }
 
 void NextionProtocol::SendCommandL(char varIndex, long sendValue)
@@ -81,7 +90,7 @@ void NextionProtocol::SendCommandL(char varIndex, long sendValue)
   char softTemp[12] = { 0 };
   ltoa(sendValue, softTemp, DEC);
   SERIAL_OUTPUT.print(softTemp);
-  SendCommandEnding();
+  SendCommandEnding(varIndex);
 }
 
 void NextionProtocol::SendCommandStr(char varIndex, char* sendValue)
@@ -89,28 +98,23 @@ void NextionProtocol::SendCommandStr(char varIndex, char* sendValue)
   SendHeader(SWS_HEADER_STR_TYPE, varIndex);
   
   SERIAL_OUTPUT.print(sendValue);
-  SendCommandStrEnding();
+  SendCommandStrEnding(varIndex);
 }
 
-void NextionProtocol::SendCommandEnding()
+void NextionProtocol::SendCommandEnding(char varIndex)
 {
   SERIAL_OUTPUT.print(F("\xFF\xFF\xFF"));
-  lastForwardmili = millis();
+  if (varIndex != CMD_SMETER)
+  {
+    // Dont need to enforce teh delay after SMETER and FFT data sent.
+    lastForwardmili = millis();
+  }
 }
 
-void NextionProtocol::SendCommandStrEnding()
+void NextionProtocol::SendCommandStrEnding(char varIndex)
 {
   SERIAL_OUTPUT.write('\"');
-  SendCommandEnding();
-}
-
-void NextionProtocol::SendCommand1Num(char varType, char sendValue) //0~9 : Mode, nowDisp, ActiveVFO, IsDialLock, IsTxtType, IsSplitType
-{
-  SERIAL_OUTPUT.print(F("pm.c"));
-  SERIAL_OUTPUT.write(varType);
-  SERIAL_OUTPUT.print(F(".val="));
-  SERIAL_OUTPUT.write(sendValue + 0x30);
-  SendCommandEnding();
+  SendCommandEnding(varIndex);
 }
 
 //Result : if found .val=, 1 else 0
@@ -475,7 +479,7 @@ void NextionProtocol::SendFFTData(int readSampleCount, int *readArray)
     }
   }
 
-  SendCommandStrEnding();
+  SendCommandStrEnding(CMD_SMETER);
 }
 
 void NextionProtocol::SendPowerSwr(float power, float swr)
@@ -486,8 +490,8 @@ void NextionProtocol::SendPowerSwr(float power, float swr)
     //SWR Send
     if (WaitUntilCommandCanBeSent())
     {
-      SendCommandL('m', constrain((int)((swr * 100.0)+.5),1 ,999)); // shift decimal point because nextion only handles integers. Round value. Limit max value to 999
-      SendCommand1Num('m', 3);
+      SendCommandL(CMD_UBITX_INFO, constrain((int)((swr * 100.0)+.5),1 ,999)); // shift decimal point because nextion only handles integers. Round value. Limit max value to 999
+      SendCommand1Num(CMD_UBITX_INFO, 3);
     }
     else
     {
@@ -501,8 +505,8 @@ void NextionProtocol::SendPowerSwr(float power, float swr)
     //PWR Send
     if (WaitUntilCommandCanBeSent())
     {
-      SendCommandL('m', (int)((power * 100.0)+ .5)); // shift decimal point because nextion only handles integers. Round value.
-      SendCommand1Num('m',2);
+      SendCommandL(CMD_UBITX_INFO, (int)((power * 100.0)+ .5)); // shift decimal point because nextion only handles integers. Round value.
+      SendCommand1Num(CMD_UBITX_INFO, 2);
     }
     else
     {
