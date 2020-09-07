@@ -16,12 +16,12 @@ License: Same as origial code.
 #include "Configuration.h"
 #include "i2cmeter2.h"
 
-double CalculateCoeff(int freqIndex, int sampleSize)
+double CalculateCoeff(uint8_t freqIndex, int sampleSize)
 {
   // calculates the coeeficient for the Goertzel_algorithm
   // freqIndex is which frequency bin to calculate.  This is based on the largest frequence (3000 Hz) and the FFT size
 
-  int targetFrequency = (freqIndex * (float)MAX_FFT_FREQUENCY + (FFTSIZE/2)) / FFTSIZE;  // bin size is 3k / fft size.  The (FFTSIZE/2) centers the frequency in the bin
+  int targetFrequency = ((float)freqIndex * (float)MAX_FFT_FREQUENCY / (float)FFTSIZE) + (MAX_FFT_FREQUENCY / 2 / FFTSIZE);  // bin size is 3k / fft size.  Center the frequency in the bin
   double k = (int) (0.5 + (((long)sampleSize * targetFrequency) / (double)SAMPLE_FREQUENCY));
   double omega = (2.0 * PI * k) / (double)sampleSize;
   return 2.0 * cos(omega);
@@ -53,8 +53,7 @@ double GetMagnatude(double coefficient, int sampleSize, int *samples)
     
     for (int index = 0; index < sampleSize; index++)
     {
-      double Q0;
-      Q0 = coefficient * Q1 - Q2 + (double)samples[index];
+      double Q0 = coefficient * Q1 - Q2 + (double)samples[index];
       Q2 = Q1;
       Q1 = Q0;
     }

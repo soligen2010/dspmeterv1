@@ -451,7 +451,7 @@ void NextionProtocol::SendFFTData(int readSampleCount, int *readArray)
 {
   SendHeader(SWS_HEADER_STR_TYPE, CMD_SMETER);
   
-  for(int i = 1; i < FFTSIZE; i++)
+  for(uint8_t i = 1; i < FFTSIZE; i++)
   {
     if (SerialDataToProcess())
     {
