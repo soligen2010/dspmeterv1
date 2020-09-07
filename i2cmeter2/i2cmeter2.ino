@@ -58,21 +58,6 @@ void setup()
   }
 }
 
-//void loop() 
-//{
-//  static char xxxxx[] = ".--..-..-";
-//  decoder.docode(xxxxx);
-//  Serial.println(decoder.GetDecodedCharacters());
-//  decoder.ClearDecodedCharacters();
-//
-//  static char xxxx []= "...---...";
-//  decoder.docode(xxxx);
-//  Serial.println(decoder.GetDecodedCharacters());
-//  decoder.ClearDecodedCharacters();
-//
-//  delay(500000);
-//}
-
 void loop() 
 {
    nextion.ForwardData();  // this will not return until the input UART is empty and the we are not in the middle of a command
