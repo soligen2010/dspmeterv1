@@ -182,14 +182,13 @@ void CWDecoder::Decode_Morse(float magnitude, int magnitudelimit_low)
   static unsigned long startttimelow;
   static unsigned long lowduration;
   
-  static float magnitudelimit = 30;
+  static int magnitudelimit = 30;
   static char realstatebefore = LOW;
   static char filteredstate = LOW;
   static char filteredstatebefore = LOW;
   static unsigned long laststarttime = 0;
   
   static char code[MORSE_SYMBOL_BUFFER_SIZE + 1] = {0}; 
-  static uint8_t stop = LOW;
   static uint8_t wpm;
 
   char realstate = LOW;
@@ -200,12 +199,12 @@ void CWDecoder::Decode_Morse(float magnitude, int magnitudelimit_low)
   if (magnitude > magnitudelimit_low)
   {
     magnitudelimit = constrain(
-                                 (magnitudelimit + ((magnitude - magnitudelimit) / (float)MAGNATUDE_MOVING_AVERAGE_SIZE))  /// moving average filter (Single pole low pass filter)
-                               , (float)magnitudelimit_low
-                               , 32000.0); 
+                                 (int)(magnitudelimit + ((magnitude - magnitudelimit) / MAGNATUDE_MOVING_AVERAGE_SIZE))  /// moving average filter (Single pole low pass filter)
+                               , magnitudelimit_low
+                               , 32767); 
   }
   
-  realstate = (magnitude > magnitudelimit * (float)MAGNATUDE_HIGH_THRESHOLD) ? HIGH : LOW;
+  realstate = (magnitude > magnitudelimit * MAGNATUDE_HIGH_THRESHOLD) ? HIGH : LOW;
 
   if (realstate != realstatebefore)
     laststarttime = currentTime;
@@ -228,17 +227,14 @@ void CWDecoder::Decode_Morse(float magnitude, int magnitudelimit_low)
       startttimelow = currentTime;
       highduration = (currentTime - starttimehigh);
 
-      if (highduration < MAX_HIGH_DURATION_MS)
+      if (highduration < (2 * hightimesavg) || hightimesavg == 0)
       {
-        if (highduration < (2 * hightimesavg) || hightimesavg == 0)
-        {
-          hightimesavg = (highduration + (hightimesavg * ((long)HIGH_TIME_MOVING_AVERAGE_SIZE - 1L))) / (long)HIGH_TIME_MOVING_AVERAGE_SIZE;     // now we know avg dit time ( rolling avg)
-        }
-        
-        if (highduration > (5 * hightimesavg) )
-        {
-          hightimesavg = highduration + hightimesavg;     // if speed decrease fast ..
-        }
+        hightimesavg = (highduration + (hightimesavg * (HIGH_TIME_MOVING_AVERAGE_SIZE - 1))) / HIGH_TIME_MOVING_AVERAGE_SIZE;     // now we know avg dit time ( rolling avg)
+      }
+      
+      if (highduration > (5 * hightimesavg) )
+      {
+        hightimesavg = min(highduration, MAX_HIGH_DURATION_MS) + hightimesavg;     // if speed decrease fast ..
       }
     }
   }
@@ -251,18 +247,17 @@ void CWDecoder::Decode_Morse(float magnitude, int magnitudelimit_low)
   
   if (filteredstate != filteredstatebefore)
   {
-    stop = LOW;
     if (filteredstate == LOW)
     {
-      if (highduration < (hightimesavg*2) && highduration > (hightimesavg * DIT_MINIMUM_SIZE))  // DIT_MINIMUM_SIZE filter out false dits
+      if (highduration < (hightimesavg * 2) && highduration >= (hightimesavg * DIT_MINIMUM_SIZE))  // DIT_MINIMUM_SIZE filter out false dits
       {
         strcat(code,".");
       }
-      else if (highduration > (hightimesavg*2) && highduration < (hightimesavg * DAH_MAXIMUM_SIZE ))
+      else if (highduration >= (hightimesavg*2) && highduration <= (hightimesavg * DAH_MAXIMUM_SIZE ))
       {
         strcat(code,"-");
         wpm = constrain(
-                          (uint8_t)(((long)wpm * ((long)WORDS_PER_MIN_MOVING_AVERAGE_SIZE - 1L) + (1200L * 3L / highduration)) / (long)WORDS_PER_MIN_MOVING_AVERAGE_SIZE)  // the most precise we can do ;o)
+                          (int)(((int)wpm * (WORDS_PER_MIN_MOVING_AVERAGE_SIZE - 1) + (1200 * 3 / highduration)) / WORDS_PER_MIN_MOVING_AVERAGE_SIZE)  // the most precise we can do ;o)
                         , 1
                         , 255);  
       }
@@ -304,15 +299,146 @@ void CWDecoder::Decode_Morse(float magnitude, int magnitudelimit_low)
       }
     }
   }
-
-  if ((currentTime - startttimelow) > (highduration * 6) && stop == LOW)
-  {
-    docode(code);
-    code[0] = '\0';
-    stop = HIGH;
-  }
  
   realstatebefore = realstate;
   lasthighduration = highduration;
   filteredstatebefore = filteredstate;
 }
+
+//void CWDecoder::Decode_MorseOrig(float magnitude, int magnitudelimit_low)
+//{
+//  // static so value is retained between executions
+//  static long starttimehigh;
+//  static long highduration;
+//  static long lasthighduration;
+//  static long hightimesavg;
+//  static long lowtimesavg;
+//  static long startttimelow;
+//  static long lowduration;
+//  
+//  static int magnitudelimit = 30;
+//  static char realstatebefore = LOW;
+//  static char filteredstate = LOW;
+//  static char filteredstatebefore = LOW;
+//  static long laststarttime = 0;
+//  
+//  static char code[MORSE_SYMBOL_BUFFER_SIZE + 1] = {0}; 
+//  static uint8_t stop = LOW;
+//  static int wpm;
+//
+//  char realstate = LOW;
+//  
+//  //magnitudelimit auto Increase
+//  if (magnitude > magnitudelimit_low)
+//  {
+//    magnitudelimit = (magnitudelimit +((magnitude - magnitudelimit)/6));  /// moving average filter
+//  }
+//
+//  if (magnitudelimit < magnitudelimit_low)
+//    magnitudelimit = magnitudelimit_low;
+//  
+//  if(magnitude > magnitudelimit*0.6) // just to have some space up 
+//    realstate = HIGH; 
+//  else
+//    realstate = LOW; 
+//
+//  if (realstate != realstatebefore)
+//    laststarttime = millis();
+//
+//  if ((millis() - laststarttime) > NOISE_BLANKER_MS)
+//  {
+//    if (realstate != filteredstate)
+//    {
+//      filteredstate = realstate;
+//    }
+//  }
+//
+//  if (filteredstate != filteredstatebefore)
+//  {
+//    if (filteredstate == HIGH)
+//    {
+//      starttimehigh = millis();
+//      lowduration = (millis() - startttimelow);
+//    }
+//    
+//    if (filteredstate == LOW)
+//    {
+//      startttimelow = millis();
+//      highduration = (millis() - starttimehigh);
+//      
+//      if (highduration < (2*hightimesavg) || hightimesavg == 0)
+//      {
+//        hightimesavg = (highduration+hightimesavg+hightimesavg)/3;     // now we know avg dit time ( rolling 3 avg)
+//      }
+//      
+//      if (highduration > (5*hightimesavg) )
+//      {
+//        hightimesavg = highduration+hightimesavg;     // if speed decrease fast ..
+//      }
+//    }
+//  }
+//
+//  ///////////////////////////////////////////////////////////////
+//  // now we will check which kind of baud we have - dit or dah //
+//  // and what kind of pause we do have 1 - 3 or 7 pause        //
+//  // we think that hightimeavg = 1 bit                         //
+//  ///////////////////////////////////////////////////////////////
+//  
+//  if (filteredstate != filteredstatebefore)
+//  {
+//    stop = LOW;
+//    if (filteredstate == LOW)
+//    {
+//      if (highduration < (hightimesavg*2) && highduration > (hightimesavg*0.6))  /// 0.6 filter out false dits
+//      {
+//        strcat(code,".");
+//      }
+//      if (highduration > (hightimesavg*2) && highduration < (hightimesavg*6))
+//      {
+//        strcat(code,"-");
+//        wpm = (wpm + (1200/((highduration)/3)))/2;  //// the most precise we can do ;o)
+//      }
+//    }
+//    
+//    if (strlen(code) >= MORSE_SYMBOL_BUFFER_SIZE)
+//    {
+//      // protect against too many symbols overflowing array before a character space
+//      // shift symbols to make room for the next one that arrives
+//      for (int x = 0; x < MORSE_SYMBOL_BUFFER_SIZE; x++)
+//      {
+//        code[x] = code[x+1];
+//      }
+//    }
+// 
+//    if (filteredstate == HIGH)
+//    {
+//      float lacktime = 1;
+//      if(wpm > 25)lacktime=1.0; ///  when high speeds we have to have a little more pause before new letter or new word 
+//      if(wpm > 30)lacktime=1.2;
+//      if(wpm > 35)lacktime=1.5;
+//      
+//      if (lowduration > (hightimesavg*(2*lacktime)) && lowduration < hightimesavg*(5*lacktime))  // letter space
+//      {
+//        docode(code);
+//        code[0] = '\0';
+//      }
+//      if (lowduration >= hightimesavg*(5*lacktime))
+//      { // word space
+//        docode(code);
+//        code[0] = '\0';
+//        SaveDisplayCharacter(32);
+//      }
+//    }
+//  }
+//
+//  if ((millis() - startttimelow) > (highduration * 6) && stop == LOW)
+//  {
+//    docode(code);
+//    code[0] = '\0';
+//    stop = HIGH;
+//  }
+// 
+//  realstatebefore = realstate;
+//  lasthighduration = highduration;
+//  filteredstatebefore = filteredstate;
+//}
