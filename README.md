@@ -58,12 +58,27 @@ data-type.  This reduced the sample array memory required by 75%.
 To mitigate the additional processing time, I changed the software serial functions to use a modified version of the AltSoftSerial library.  This library uses 
 interrupts to send the data instead if in-line timing loops.  What this did was allow me interleave the FFT calculations while the data is being sent.
 
-I also coded things so that it is easy to change between using the hardware vs. software serial, which should improve the interleaving of FFT calculations and sending the data even more.
-
-I better aligned the frequency of signal peaks on the main screen vs. the DSP/CW Decode screen (there was a mis-match).  It is not perfect, but better.  The Peak frequencies still do not match external programs like FLDigi, but at least it is consistent.
-
 AltSoftSerial was modified to reduce the RX buffer (since it is used for TX only) and removed definitions for other platforms so the .h files could be combined into one.  Also added a method called TxBufferIsEmpty so that we can abort the FFT sampling if all the data hasn't been sent yet. This is to help keep the SW Serial interrupts from disrupting the sample timing.
 
+I also coded things so that it is easy to change between using the hardware vs. software serial, which should improve the interleaving of FFT calculations and sending the data even more.
+
+I aligned the frequency of signal peaks on the main screen vs. the DSP/CW Decode screen vs. the display in FLDigi (there was a mis-match).  They all now agree on the frequency of the peak.  As a result of this change, each line in the FFT is now
+50 Hz wide (was previously 47) and the FFT frequency range now is 50 - 3200 Hz (previously stopped at 3000 Hz).
+
+Changes to the Nextion UI are needed for this.  The WC8C file has this change.  To update a different Nextion UI (assuming it shared the same original code base as the WC8C UI) make the changes below.  Commented lines are the old, uncommented are new.
+
+In screen px in Timer tm1
+```
+  //nTemp0.val=nTemp0.val*47
+  //nTemp0.val=nTemp0.val+30
+  nTemp0.val=nTemp0.val*50
+  nTemp0.val=nTemp0.val+50
+```
+In screen pdsp in Timer tm1
+```
+  //sys1=nDecodeFreq.val/48
+  sys1=nDecodeFreq.val/50
+```
 ### Code Reorganization and Streamlining
 I was changing so much that I went ahead and did a major re-structuring and stream-lining of the code.  This is too much to fully detail in the summary.  You will see many more files and some 
 functionality is now encapsulated in classes.  I personally find this type of code structure and organization easier to deal with.

@@ -21,7 +21,7 @@ double CalculateCoeff(uint8_t freqIndex, int sampleSize)
   // calculates the coeeficient for the Goertzel_algorithm
   // freqIndex is which frequency bin to calculate.  This is based on the largest frequence (3000 Hz) and the FFT size
 
-  int targetFrequency = ((float)freqIndex * (float)MAX_FFT_FREQUENCY / (float)FFTSIZE) + (MAX_FFT_FREQUENCY / 2 / FFTSIZE);  // bin size is 3k / fft size.  Center the frequency in the bin
+  long targetFrequency = (((long)freqIndex * (long)MAX_FFT_FREQUENCY) / (long)FFTSIZE);  // bin size is 3k / fft size.  
   double k = (int) (0.5 + (((long)sampleSize * targetFrequency) / (double)SAMPLE_FREQUENCY));
   double omega = (2.0 * PI * k) / (double)sampleSize;
   return 2.0 * cos(omega);

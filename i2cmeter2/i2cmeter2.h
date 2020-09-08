@@ -25,8 +25,8 @@ License: Same as origial code.
 //FFT and Decode Morse
 //================================================================
 #define FFTSIZE 64
-#define MAX_FFT_FREQUENCY 3000
-#define SAMPLE_FREQUENCY 8000           //Caution, do not exceed the speed of the GrepADC loop.  Must be at least MAX_FFT_FREQUENCY * 2
+#define MAX_FFT_FREQUENCY 3200                             // 3200 gives and even frequency bin size of 50Hz
+#define SAMPLE_FREQUENCY (MAX_FFT_FREQUENCY * 2)           //Caution, do not exceed the speed of the GrepADC loop.  Must be at least MAX_FFT_FREQUENCY * 2
 #define SAMPLESIZE (int)((long)SAMPLE_FREQUENCY * (long)FFTSIZE / (long)MAX_FFT_FREQUENCY)  // This calculations makes the FFT frequency resolution the same as the FFTSIZE
 #define DECODE_MORSE_SAMPLESIZE (SAMPLESIZE * 3 / 8)   // Less frequency resolution when CW decoding is faster and helps the signal be in the decode window.  Approx. 125 hz resolution
 #define SAMPLE_INTERVAL  (unsigned long)round(1000000.0 * (1.0 / (float)SAMPLE_FREQUENCY))
