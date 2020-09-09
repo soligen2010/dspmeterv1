@@ -352,7 +352,7 @@ void NextionProtocol::CalculateScaledSMeter(int ADC_DIFF)
 {
   //SERIAL_OUTPUT.println(ADC_DIFF);
   //basic : 1.5Khz
-  int newScaledSMeter = 0;
+  uint8_t newScaledSMeter = 0;
   //if (ADC_DIFF > 26)  //-63dBm : S9 + 10dBm
   if (ADC_DIFF > 26)  //-63dBm : S9 + 10dBm  (subtract loss rate)
   //if (ADC_DIFF > 55)  //-63dBm : S9 + 15dBm
@@ -401,8 +401,10 @@ void NextionProtocol::CalculateScaledSMeter(int ADC_DIFF)
 5 : -77 ~ -72
 6 : -71 ~ -69
  */
-  
+
+  noInterrupts();    // disable interrupts while saving these so that the I2C ISR cant read them while they are changing.
   scaledSMeter = newScaledSMeter;
+  interrupts();
 }
 
 bool NextionProtocol::ResponseConfig()

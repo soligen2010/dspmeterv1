@@ -208,7 +208,7 @@ void I2CRequestEvent(void)
   else if (command == I2CMETER_UNCALCS)
   {
     // cast to a long becasue this theoretically can be 1023 * 1023, then cast it back down after the constrain
-    // Not sure why this is being squared since it could cause an overflow - maintianing behavior of original code.
+    // Not sure why this is being squared - maintianing behavior of original code.
     Wire.write((uint8_t)constrain(((long)ADC_DIFF) * ((long)ADC_DIFF), 0, 255));
   }
   /* Notes on power and SWR
