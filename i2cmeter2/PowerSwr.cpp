@@ -38,7 +38,7 @@ void PowerSwr::PowerSwrCalculation(unsigned long L_vfoCurr)
   {
     float revPower = (newRevPowerIn==0) ? 0.0 : pow(CAL_REF_VOLTAGE * newRevPowerIn * CAL_REV_ADJUST_MULTIPLIER(L_vfoCurr) / 1023.0 + CAL_REV_DIODE_DROP, 2);
     swr = (1.0 + sqrt(revPower/power)) / (1.0 - sqrt(revPower/power));
-    swr = (swr > 9.9) ? 9.9 : swr;  // max swr sent is 9.9
+    swr = (swr > 9.99) ? 9.99 : swr;  // max swr sent is 9.99
   }
 }
 

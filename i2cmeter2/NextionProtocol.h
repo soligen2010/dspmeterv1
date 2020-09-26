@@ -95,7 +95,7 @@ class NextionProtocol
   void CalculateScaledSMeter(int ADC_DIFF);
   void SendFFTData(int readSampleCount, int *readArray);
   bool ResponseConfig();
-  void SendPowerSwr(float power, float swr);
+  bool SendPowerSwr(float power, float swr, bool sendSwrAsSmeter = true);
   bool SerialDataToProcess();
   bool LastSendWaitTimeElapsed();
   bool WaitUntilCommandCanBeSent();
@@ -144,8 +144,8 @@ protected:
   uint8_t cwDecodeHz = 9;
   uint8_t responseCommand = 0;  
   unsigned long lastForwardmili = 0;
-  float lastSentSwr;
-  float lastSentPower;
+  float lastSentSwr = -1;
+  float lastSentPower = -1;
   uint8_t LastSendScaledSMeter;
   uint8_t SMeterToUartIdleCount  = 0;
   

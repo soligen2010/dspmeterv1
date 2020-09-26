@@ -66,10 +66,13 @@ void NextionProtocol::SendHeader(char varType, char varIndex)
 
 void NextionProtocol::SendCommand1Num(char varIndex, char sendValue) //0~9 : Mode, nowDisp, ActiveVFO, IsDialLock, IsTxtType, IsSplitType
 {
+  char softTemp[12] = { 0 };
+  ultoa(sendValue, softTemp, DEC);
+
   SERIAL_OUTPUT.print(F("pm.c"));
   SERIAL_OUTPUT.write(varIndex);
   SERIAL_OUTPUT.print(F(".val="));
-  SERIAL_OUTPUT.write(sendValue + 0x30);
+  SERIAL_OUTPUT.write(softTemp);
   SendCommandEnding(varIndex);
 }
 
@@ -104,11 +107,7 @@ void NextionProtocol::SendCommandStr(char varIndex, char* sendValue)
 void NextionProtocol::SendCommandEnding(char varIndex)
 {
   SERIAL_OUTPUT.print(F("\xFF\xFF\xFF"));
-  if (varIndex != CMD_SMETER)
-  {
-    // Dont need to enforce teh delay after SMETER and FFT data sent.
-    lastForwardmili = millis();
-  }
+  lastForwardmili = millis();
 }
 
 void NextionProtocol::SendCommandStrEnding(char varIndex)
@@ -342,57 +341,45 @@ void NextionProtocol::SendScaledSMeter(int meterToUartInterval)
 {
   if (SMeterToUartSend == 1 && LastSendScaledSMeter != scaledSMeter && LastSendWaitTimeElapsed() && ++SMeterToUartIdleCount > meterToUartInterval)
   {
-    LastSendScaledSMeter = scaledSMeter;
-    SendCommand1Num(CMD_SMETER, LastSendScaledSMeter); 
+    SendCommand1Num(CMD_SMETER, scaledSMeter); 
     SMeterToUartIdleCount = 0;
+    LastSendScaledSMeter = scaledSMeter;
   }
 }
 
 void NextionProtocol::CalculateScaledSMeter(int ADC_DIFF)
 {
-  //SERIAL_OUTPUT.println(ADC_DIFF);
+  // if not in high resolution SMeter mode, this will multiply by 10 so that the IF statemente below work. For High Res, it multiplies by 1
+  int HIGH_RESOLUTION_ADC_DIFF = ADC_DIFF * (10 / SMETER_RESOLUTION_MULTIPLIER);
+  
   //basic : 1.5Khz
   uint8_t newScaledSMeter = 0;
-  //if (ADC_DIFF > 26)  //-63dBm : S9 + 10dBm
-  if (ADC_DIFF > 26)  //-63dBm : S9 + 10dBm  (subtract loss rate)
-  //if (ADC_DIFF > 55)  //-63dBm : S9 + 15dBm
+  
+  if (HIGH_RESOLUTION_ADC_DIFF >= 360)  //s9 + 10dbm to s9 + 20dbm
   {
-    newScaledSMeter = 8;
+    newScaledSMeter = map(constrain(ADC_DIFF, 0, 1560), 360, 1560, 72, 80);;
   }
-  else if (ADC_DIFF > 11) //~ -72  S9
+  if (HIGH_RESOLUTION_ADC_DIFF >= 118)  //s9 to s9 + 10dbm
   {
-    newScaledSMeter = 7;
+    newScaledSMeter = map(ADC_DIFF, 118, 360, 64, 72);
   }
-  else if (ADC_DIFF > 8)
+  else if (HIGH_RESOLUTION_ADC_DIFF >= 64) //s8 to s9
   {
-    newScaledSMeter = 6;
+    newScaledSMeter = map(ADC_DIFF, 64, 118, 52, 64);
   }
-  else if (ADC_DIFF > 6)  //~-80 S7  
-  //else if (compensatedAdcDiff > 5)  //~-80 S7  
+  else if (HIGH_RESOLUTION_ADC_DIFF >= 40)  // s7 to s8
   {
-    newScaledSMeter = 5;    
+    newScaledSMeter = map(ADC_DIFF, 40, 64, 40, 52);
   }
-  else if (ADC_DIFF > 4)  
+  else 
   {
-    newScaledSMeter = 4;    //79   S8
-  }
-  else if (ADC_DIFF > 3) 
-  {
-    newScaledSMeter = 3;   //-81 ~ -78 => S7
-  }
-  else if (ADC_DIFF > 2)  
-  {
-    newScaledSMeter = 2; // -88 ~ -82 => S7 or S6
-  }
-  else if (ADC_DIFF > 1)  //-93 ~ -89 => S5 or S4
-  {
-    newScaledSMeter = 1;
-  }
-  else    // ~ -93.0dBm ~S3 or S4
-  {
-    newScaledSMeter = 0;
+    // Anything smaller is close enough to linear.
+    newScaledSMeter = ADC_DIFF;
   }
 
+  // if not in high resolution SMeter mode, undo the scaling
+  newScaledSMeter = constrain(newScaledSMeter, 0, 80) / (10 / SMETER_RESOLUTION_MULTIPLIER) ;
+  
 /*
 1 : with noise (not use 0 ~ S3) 
 2 : -93 ~ -89
@@ -484,55 +471,54 @@ void NextionProtocol::SendFFTData(int readSampleCount, int *readArray)
   SendCommandStrEnding(CMD_SMETER);
 }
 
-void NextionProtocol::SendPowerSwr(float power, float swr)
+bool NextionProtocol::SendPowerSwr(float power, float swr, bool sendSwrAsSmeter = true)
 {
+  // Send SWR as S meter value.  This is for comaptibility with Dr. Lee's version
+  uint8_t SmeterSwrValue = constrain((uint8_t)(((swr - 1.0) * SMETER_RESOLUTION_MULTIPLIER) + 0.5), 1, 9 * SMETER_RESOLUTION_MULTIPLIER);  // Subtract 1 so the SMeter is zero based.
+  if (LastSendScaledSMeter != SmeterSwrValue && sendSwrAsSmeter)
+  {
+    if (WaitUntilCommandCanBeSent())
+    {
+      SendCommand1Num(CMD_SMETER, SmeterSwrValue); 
+      LastSendScaledSMeter = SmeterSwrValue;
+    }
+    else
+    {
+      return false;  // Wait was aborted because data came in to process
+    }
+  }
+
   if (lastSentSwr != swr)
   {
-    lastSentSwr = swr;
     //SWR Send
     if (WaitUntilCommandCanBeSent())
     {
       SendCommandL(CMD_UBITX_INFO, constrain((int)((swr * 100.0)+.5),1 ,999)); // shift decimal point because nextion only handles integers. Round value. Limit max value to 999
       SendCommand1Num(CMD_UBITX_INFO, 3);
+      lastSentSwr = swr;
     }
     else
     {
-      return;  // Wait was aborted because data came in to process
+      return false;  // Wait was aborted because data came in to process
     }
   }
   
   if (lastSentPower != power)
   {
-    lastSentPower = power;
     //PWR Send
     if (WaitUntilCommandCanBeSent())
     {
       SendCommandL(CMD_UBITX_INFO, (int)((power * 100.0)+ .5)); // shift decimal point because nextion only handles integers. Round value.
       SendCommand1Num(CMD_UBITX_INFO, 2);
+      lastSentPower = power;
     }
     else
     {
-      return;  // Wait was aborted because data came in to process
-    }
-  }
-
-  // Send SWR as power meter value.  This is for comaptibility with Dr. Lee's version
-  uint8_t SmeterSwrValue = constrain((uint8_t)(swr + 0.5),1,9);
-  if (LastSendScaledSMeter != SmeterSwrValue)
-  {
-    LastSendScaledSMeter = SmeterSwrValue;
-    //PWR Send
-    if (WaitUntilCommandCanBeSent())
-    {
-      SendCommand1Num(CMD_SMETER, SmeterSwrValue); 
-    }
-    else
-    {
-      return;  // Wait was aborted because data came in to process
+      return false;  // Wait was aborted because data came in to process
     }
   }
  
-  return;
+  return true;
 }
 
 bool NextionProtocol::WaitUntilCommandCanBeSent()
@@ -552,7 +538,7 @@ bool NextionProtocol::SerialDataToProcess()
 
 bool NextionProtocol::LastSendWaitTimeElapsed()
 {
-  return (millis() > lastForwardmili + LAST_TIME_INTERVAL);
+  return (millis() - LAST_TIME_INTERVAL > lastForwardmili);
 }
 
 bool NextionProtocol::SendDecodeCharacters(char *characters)

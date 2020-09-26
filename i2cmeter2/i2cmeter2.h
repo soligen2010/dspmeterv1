@@ -17,7 +17,7 @@ License: Same as origial code.
 //================================================================
 //COMMUNICATION SECTION
 //================================================================
-#define FastMeterToUartInterval  4
+#define FastMeterToUartInterval  1
 #define FFTMeterToUartInterval  0
 #define DecodeMeterToUartInterval  48
 

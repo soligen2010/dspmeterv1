@@ -11,8 +11,8 @@ class PowerSwr
 public:
 void PowerSwrCalculation(unsigned long L_vfoCurr);
 
-float power = 0;
-float swr = 1;
+float power = -1;
+float swr = -1;
 
 int powerIn;
 int revPowerIn;

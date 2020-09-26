@@ -38,7 +38,7 @@ volatile byte I2CCommand = 0; // volatile because I2C interrupt changes this
 void setup() 
 {    
   Wire.begin(I2CMETER_ADDR);              //j : S-Meter Slave Address
-  Wire.onReceive(I2CReceiveEvent);        //
+  Wire.onReceive(I2CReceiveEvent); 
   Wire.onRequest(I2CRequestEvent);
   
   Serial.begin(SERIAL_SPEED, SERIAL_8N1);
@@ -84,20 +84,38 @@ void loop()
   //===========================================
   //TRANSCEIVER STATUS : TX
   //===========================================
+  #ifdef ENABLE_POWER_SWR_METER
+  static uint8_t pwrSwrResetCounter = 0; // when TX disabled, how many times to try to reset the power and SWR to ensure Nextion gets it
+  #endif
   if (nextion.TXStatus == 1 || !nextion.nextionIsConnected)  //  TX Mode, or always read if there is no nextion so values are available if requested via I2C
   {
     #ifdef ENABLE_POWER_SWR_METER
       powerSwrCalculator.PowerSwrCalculation(nextion.L_vfoCurr);
       if (nextion.nextionIsConnected)
       {
-        nextion.SendPowerSwr(powerSwrCalculator.power, powerSwrCalculator.swr);
+        nextion.SendPowerSwr(powerSwrCalculator.power, powerSwrCalculator.swr, true);
+        pwrSwrResetCounter = POWER_SWR_RESET_RETRY_COUNT;
+        return; //Do not process ADC, FFT, Decode Morse or RTTY, only Power and SWR Data Return
       }
     #endif
-    return; //Do not process ADC, FFT, Decode Morse or RTTY, only Power and SWR Data Return
+  }
+  else
+  {
+    #ifdef ENABLE_POWER_SWR_METER
+      if (nextion.nextionIsConnected && pwrSwrResetCounter > 0)
+      {
+        //  reset the power and SWR meter when state changes out of TX mode
+        if (!nextion.SendPowerSwr(0.0, 1.0, false))
+        {
+          return;  // if incomming data aborted the send, return so it can be processed
+        }  
+        pwrSwrResetCounter--;
+      }
+    #endif
   }
 
   //===========================================
-  //TRANSCEIVER STATUS : RX
+  //TRANSCEIVER STATUS : RX or no Nextion
   //===========================================
   //===========================================
   // ADC Sampling
@@ -114,7 +132,7 @@ void loop()
   nextion.CalculateScaledSMeter(ADC_DIFF);
 
   //===================================================================================
-  // DSP Routine
+  // DSP Routine - only if there is a Nextion
   //===================================================================================
   if (nextion.nextionIsConnected)
   {
@@ -167,7 +185,7 @@ int GrepADC(int readSampleCount, int *readArray)
     {
       // if something has come in then terminate the FFT sample so incomming data can be processed.
       // this is so that frequency tuning does no lag when in FFT mode.
-      // returning -1 instead of ADC_DIFF indicates that the sample is incolplete.
+      // returning -1 instead of ADC_DIFF indicates that the sample is incomplete.
       return -1;
     }
     
@@ -179,7 +197,7 @@ int GrepADC(int readSampleCount, int *readArray)
     while((newCurrentms - SAMPLE_INTERVAL) < currentms){newCurrentms = micros();}
   } //end of for
   
-  return ((float)ADC_MAX - (float)ADC_MIN) / SMETER_GAIN;  // return ADC_DIFF
+  return ((ADC_MAX - ADC_MIN) * SMETER_RESOLUTION_MULTIPLIER) / SMETER_GAIN;  // return ADC_DIFF
 }
 
 void I2CReceiveEvent(void)
@@ -203,13 +221,13 @@ void I2CRequestEvent(void)
   
   if (command == I2CMETER_CALCS)
   {
-    Wire.write(nextion.scaledSMeter);
+    Wire.write(nextion.scaledSMeter/SMETER_RESOLUTION_MULTIPLIER);  // only sends low resolution SMeter
   }
   else if (command == I2CMETER_UNCALCS)
   {
     // cast to a long becasue this theoretically can be 1023 * 1023, then cast it back down after the constrain
     // Not sure why this is being squared - maintianing behavior of original code.
-    Wire.write((uint8_t)constrain(((long)ADC_DIFF) * ((long)ADC_DIFF), 0, 255));
+    Wire.write((uint8_t)constrain(((long)(ADC_DIFF/SMETER_RESOLUTION_MULTIPLIER)) * ((long)(ADC_DIFF/SMETER_RESOLUTION_MULTIPLIER)), 0, 255));
   }
   /* Notes on power and SWR
    *  
