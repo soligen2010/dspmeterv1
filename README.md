@@ -15,6 +15,8 @@ the changes are so extensive.
 
 To use this version you should be familiar with using the Arduino IDE and flashing an Arduino.  The DSP Nano will likely need to disconnected from the Raduino for flashing to work.
 
+To use this, be sure to review Configuration.h and make any necessary configuration changes for your rig. 
+
 Dennis WC8C
 
 ## Change Goals
@@ -26,7 +28,7 @@ I began with a several goals:
 
 In the process of pursuing these, I modified quite a lot of miscellaneous things.
 
-## V2 Summary
+## V2 Changes
 ### CW Decode
 I re-arranged the decode checks so that the longer dit-dah sequences are checked first, and changed to compare to match against the end of the decoded dit-dah string.
 What this does is sometimes allow a match to be found if the previous character spacing is missed.  So, for example, if two letters are run together
