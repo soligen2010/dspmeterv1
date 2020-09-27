@@ -161,11 +161,24 @@ Encapsulated many things in classes and re-factored some of the functional depen
 In may cases there needs to be at least a 50ms delay after certain commands to allow the Nextion to process the previous command.  I changed the way this is done and enforced the delay for all commands (except sending FFT which didn't seem to need it).  I also reduced the delay timer to 75ms. which seems adequate (it formerly was 159, but not implemented everywhere).  If you have odd Nextion update issues (I had some when I tried running at 50ms) you can try increasing #define LAST_TIME_INTERVAL in NextionProtocol.h.
 
 ## S-Meter Boost Circuit
-Included is a schematic of the op amp circuit I used to increase the level of the VOL-HIGH input.  I noticed that lower level signals seemed to have very low resolution in the ADC.  By amplifying the signal, there is more resolution at the low end, but it maxes out the high end sooner.  I also added a Zener diode to protect the ADC input.  The amplification is compensated by adjusting the #define SMETER_GAIN in i2cmeter2.h (raise the number to lower the displayed value.)  To calibrate, feed the radio an S9 level signal and adjust the value until the meter just passes the S9 reading.
+Included is a schematic of the op amp circuit I used to increase the level of the VOL-HIGH input.  I noticed that lower level signals seemed to have very low resolution in the ADC.  By amplifying the signal, there is more resolution at the low end, but it maxes out the high end sooner.  I also added a Zener diode to protect the ADC input.  The amplification is compensated by adjusting the #define SMETER_GAIN in i2cmeter2.h (raise the number to lower the displayed value.)  To calibrate, feed the radio an S9 level signal and adjust the value until the meter just reaches the S9 marking. Note that without the high resolution S-Meter option enabled, the display will either be above or below the S9 marking - your choice on which to calibrate to.
 
 The SMETER_GAIN setting I used for my uBitx V4 board with the op-amp circuit is 1.6.  Since I have made some mods to my uBitx, your calibration may vary.
 
 With the op amp circuit I used, the ADC maxes out at about S9 + 10db.  However, I run the AGC from kit-projects.com, and with the AGC turned on, the ADC doesn't max out.  Personally, I think the S-Meter should be calibrated with the AGC off, but you can do it either way at your preference.
+
+## Nextion Display
+I also included my customized Nextion firmware (3.2" display)
+* Tweaks to go with the changes above.
+* Added Power and SWR meter screen (graphical)
+* Added Power and SWR (numeric) to main screen when transmitting - SWR flashes yellow/red when too high
+* Streamlined MEM to VFO screen
+	* Frequencies are loaded when the screen opens
+	* Selecting a frequency immediately returns to main screen
+* I think there may be other tweaks I did some time ago - I don't recall the specifics.
+
+## Known Issues
+Some of the I2C responses seem like they have issues (comments are in the code).  However, I don't think the I2C interface gets used if a Nextion display is used.  I tried it retain the original responses even if there seemed to be an issue.
 
 ## License
 I follow the same license terms as Dr. Lee. I do not claim any license for this code.
