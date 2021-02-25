@@ -60,7 +60,7 @@ static uint8_t tx_bit;
 static volatile uint8_t tx_buffer_head;
 static volatile uint8_t tx_buffer_tail;
 #define TX_BUFFER_SIZE 64                      // changed to match the hardware input buffer size for hardware seial 
-                                               // this is so that anything being input doesn't get too dealyed is the buffer is too full
+                                               // this is so that anything being input doesn't get too dealyed if the buffer is too full
                                                
 static volatile uint8_t tx_buffer[TX_BUFFER_SIZE];
 

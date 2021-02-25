@@ -17,7 +17,6 @@ License : See fftfunctions.cpp for FFT and CW Decode.
 #include "PowerSwr.h"
 #include "Configuration.h"
 
-
 #ifdef USE_SW_SERIAL
   AltSoftSerial SERIAL_OUTPUT;
   NextionProtocol nextion = NextionProtocol(SERIAL_OUTPUT);
@@ -34,6 +33,46 @@ CWDecoder decoder;
 int FFTReal[SAMPLESIZE];
 int ADC_DIFF  = 0;
 volatile byte I2CCommand = 0; // volatile because I2C interrupt changes this
+
+int GrepADC(int readSampleCount, int *readArray)
+{
+  #ifdef USE_SW_SERIAL
+    // if there is data to still output then return so normal forwarding can continue.
+    // only want to sample if the SW Serial output is empty so interrupts dont disrupt sample timing.
+    if (!SERIAL_OUTPUT.TxBufferIsEmpty())
+    {
+      return -1;
+    }
+  #endif
+
+  unsigned long currentms = 0;
+  unsigned long newCurrentms = 0;
+  int ADC_MAX = 0;
+  int ADC_MIN = 30000;
+  
+  analogRead(SIGNAL_METER_ADC);  // initial unused value helps accuracy since ADC may have been switched to read power & swr.
+  newCurrentms = micros();
+
+  for(int i=0; i < readSampleCount; i++)
+  {
+    if (nextion.SerialDataToProcess())
+    {
+      // if something has come in then terminate the FFT sample so incomming data can be processed.
+      // this is so that frequency tuning does no lag when in FFT mode.
+      // returning -1 instead of ADC_DIFF indicates that the sample is incomplete.
+      return -1;
+    }
+    
+    currentms = newCurrentms;
+    readArray[i] = analogRead(SIGNAL_METER_ADC);
+    ADC_MAX = max(ADC_MAX, readArray[i]);
+    ADC_MIN = min(ADC_MIN, readArray[i]);
+
+    while((newCurrentms - SAMPLE_INTERVAL) < currentms){newCurrentms = micros();}
+  } //end of for
+  
+  return ((ADC_MAX - ADC_MIN) * SMETER_RESOLUTION_MULTIPLIER) / SMETER_GAIN;  // return ADC_DIFF
+}
 
 void setup() 
 {    
@@ -60,8 +99,8 @@ void setup()
 
 void loop() 
 {
-   nextion.ForwardData();  // this will not return until the input UART is empty and the we are not in the middle of a command
-
+  nextion.ForwardData();  // this will not return until the input UART is empty and the we are not in the middle of a command
+    
   //===========================================
   //Processing for when a config response has needs to be sent
   //===========================================
@@ -160,46 +199,6 @@ void loop()
   }
 } //end of main loop
 
-int GrepADC(int readSampleCount, int *readArray)
-{
-  #ifdef USE_SW_SERIAL
-    // if there is data to still output then return so normal forwarding can continue.
-    // only want to sample if the SW Serial output is empty so interrupts dont disrupt sample timing.
-    if (!SERIAL_OUTPUT.TxBufferIsEmpty())
-    {
-      return -1;
-    }
-  #endif
-
-  unsigned long currentms = 0;
-  unsigned long newCurrentms = 0;
-  int ADC_MAX = 0;
-  int ADC_MIN = 30000;
-  
-  analogRead(SIGNAL_METER_ADC);  // initial unused value helps accuracy since ADC may have been switched to read power & swr.
-  newCurrentms = micros();
-
-  for(int i=0; i < readSampleCount; i++)
-  {
-    if (nextion.SerialDataToProcess())
-    {
-      // if something has come in then terminate the FFT sample so incomming data can be processed.
-      // this is so that frequency tuning does no lag when in FFT mode.
-      // returning -1 instead of ADC_DIFF indicates that the sample is incomplete.
-      return -1;
-    }
-    
-    currentms = newCurrentms;
-    readArray[i] = analogRead(SIGNAL_METER_ADC);
-    ADC_MAX = max(ADC_MAX, readArray[i]);
-    ADC_MIN = min(ADC_MIN, readArray[i]);
-
-    while((newCurrentms - SAMPLE_INTERVAL) < currentms){newCurrentms = micros();}
-  } //end of for
-  
-  return ((ADC_MAX - ADC_MIN) * SMETER_RESOLUTION_MULTIPLIER) / SMETER_GAIN;  // return ADC_DIFF
-}
-
 void I2CReceiveEvent(void)
 {
   int readCommand = 0; // byte를 읽어 int로 변환  
@@ -218,16 +217,37 @@ void I2CReceiveEvent(void)
 void I2CRequestEvent(void)
 {
   byte command = I2CCommand; // make a copy in case it case the other interrupt changes it while this is executing
-  
+
   if (command == I2CMETER_CALCS)
   {
     Wire.write(nextion.scaledSMeter/SMETER_RESOLUTION_MULTIPLIER);  // only sends low resolution SMeter
   }
   else if (command == I2CMETER_UNCALCS)
   {
+    int maxValue = 0;
+    int minValue = 30000;
+    int readedValue = 0;
+    unsigned long curr = micros();
+
+    while(micros() < (curr + 1000))  // read as many as we can in 1 milllisecod.  Longer can cause issues with the communication
+    {
+      readedValue = analogRead(SIGNAL_METER_ADC);;
+
+      if (readedValue > maxValue)
+      {
+        maxValue = readedValue;
+      }
+
+      if (readedValue < minValue)
+      {
+        minValue = readedValue;
+      }
+    }
+
     // cast to a long becasue this theoretically can be 1023 * 1023, then cast it back down after the constrain
+    long sampleDifference = (float)(maxValue - minValue) / SMETER_GAIN;
     // Not sure why this is being squared - maintianing behavior of original code.
-    Wire.write((uint8_t)constrain(((long)(ADC_DIFF/SMETER_RESOLUTION_MULTIPLIER)) * ((long)(ADC_DIFF/SMETER_RESOLUTION_MULTIPLIER)), 0, 255));
+    Wire.write((uint8_t)constrain(sampleDifference * sampleDifference, 0, 255));
   }
   /* Notes on power and SWR
    *  

@@ -117,7 +117,7 @@ void NextionProtocol::SendCommandStrEnding(char varIndex)
 }
 
 //Result : if found .val=, 1 else 0
-char NextionProtocol::CommandParser(char* ForwardBuff, int lastIndex)
+void NextionProtocol::CommandParser(char* ForwardBuff, int lastIndex)
 {
   //Analysing Forwrd data
   //59 58 68 4A   1C 5F 6A E5     FF FF 73 
@@ -129,20 +129,12 @@ char NextionProtocol::CommandParser(char* ForwardBuff, int lastIndex)
   //
   int startIndex = 0;
 
-  //Loop back command has 13 ~ 23
-  if (lastIndex < 13)
+  // Return fast if not a loopback 
+  // Loop back command has 13 ~ 23
+  // Protocol MAX Length : 22
+  if (lastIndex < 13 || lastIndex > 22)
   {
-    return 0;
-  }
-
-  //Protocol MAX Length : 22
-  if (lastIndex >= 22)
-  {
-    startIndex = lastIndex - 22;
-  }
-  else
-  {
-    startIndex = 0;
+    return;
   }
 
   for (int i = lastIndex - 3; i >= startIndex + 7; i--)
@@ -274,34 +266,39 @@ char NextionProtocol::CommandParser(char* ForwardBuff, int lastIndex)
         frequencyHasChanged = true;
       }
 
-      return 1;
+      return;
     }     //end of check Protocol (.val)
   }       //end of for
 
   //Not found Protocol (.val=
-  return 0;
+  return;
 }
 
 int NextionProtocol::ForwardData(void)
 {
-  static char etxCount = 0;  // static so value is retained between executions       
+  static uint8_t etxCount = 0;  // static so value is retained between executions       
   static uint8_t nowBuffIndex = 0;   // static so value is retained between executions
-  static char ForwardBuff[MAX_FORWARD_BUFF_LENGTH + 1];
+  static uint8_t ForwardBuff[MAX_FORWARD_BUFF_LENGTH + 1];
 
   bool nowSendingProtocol = false;
-
-  while (nowSendingProtocol || SerialDataToProcess()) // make sure all data has been forwarded before doing anything else.
+  uint8_t recvChar;
+  
+  while (nowSendingProtocol || Serial.available() > 0) // make sure all data has been forwarded before doing anything else.
   {
-    if (SerialDataToProcess())
+    if (Serial.available() > 0)
     {
-      SERIAL_OUTPUT.flush();
       //Check RX Buffer
-      while (SerialDataToProcess())
+      while (Serial.available() > 0)
       {
-        uint8_t recvChar = Serial.read();
-  
-        ForwardBuff[nowBuffIndex] = recvChar;
-  
+        recvChar = Serial.read();
+        SERIAL_OUTPUT.write(recvChar);  
+        
+        if ( nowBuffIndex < MAX_FORWARD_BUFF_LENGTH )
+        {
+          ForwardBuff[nowBuffIndex] = recvChar;
+          nowBuffIndex++;
+        }
+   
         if (recvChar == 0xFF)       //found ETX
         {
           etxCount++;               //Nextion Protocol, ETX : 0xFF, 0xFF, 0xFF
@@ -309,27 +306,18 @@ int NextionProtocol::ForwardData(void)
           {
             nextionIsConnected = true;  // Set to true first time through then stays true.  This indicates commands are comming in so assume a Nextion is connected.
             //Finished Protocol
-            if (CommandParser(ForwardBuff, nowBuffIndex) == 1)
-            {
-              nowSendingProtocol = false; //Finished 1 Set Command
-              etxCount = 0;
-              nowBuffIndex = 0;
-            }
-          }
+            CommandParser(ForwardBuff, nowBuffIndex);
+            nowSendingProtocol = false; //Finished 1 Set Command
+            etxCount = 0;
+            nowBuffIndex = 0;
+         }
         }
         else
         {
-          etxCount = 0x00;
+          etxCount = 0;
           nowSendingProtocol = true; //Sending Data
         }
-        
-        SERIAL_OUTPUT.write(recvChar);
-        nowBuffIndex++;
-  
-        if (nowBuffIndex > MAX_FORWARD_BUFF_LENGTH -2)
-        {
-          nowBuffIndex = 0;
-        }
+
       } //end of while
       SERIAL_OUTPUT.flush();
       lastForwardmili = millis();

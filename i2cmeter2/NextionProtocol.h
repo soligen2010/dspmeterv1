@@ -26,7 +26,7 @@
   #define SERIAL_OUTPUT Serial
 #endif
 
-#define MAX_FORWARD_BUFF_LENGTH 128
+#define MAX_FORWARD_BUFF_LENGTH 30
 
 #define SWS_HEADER_CHAR_TYPE 'c'  //1Byte Protocol Prefix
 #define SWS_HEADER_INT_TYPE  'v'  //Numeric Protocol Prefex
@@ -139,7 +139,7 @@ class NextionProtocol
   bool nextionIsConnected = false; // This gets set to true as soon as inbound serial data arrives.
 
 protected:
-  char CommandParser(char* ForwardBuff, int lastIndex);
+  void CommandParser(char* ForwardBuff, int lastIndex);
 
   uint8_t cwDecodeHz = 9;
   uint8_t responseCommand = 0;  
