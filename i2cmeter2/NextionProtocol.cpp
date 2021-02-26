@@ -526,7 +526,7 @@ bool NextionProtocol::SerialDataToProcess()
 
 bool NextionProtocol::LastSendWaitTimeElapsed()
 {
-  return (millis() - LAST_TIME_INTERVAL > lastForwardmili);
+  return (millis() - lastForwardmili > LAST_TIME_INTERVAL);
 }
 
 bool NextionProtocol::SendDecodeCharacters(char *characters)

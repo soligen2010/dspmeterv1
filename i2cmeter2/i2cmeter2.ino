@@ -68,7 +68,7 @@ int GrepADC(int readSampleCount, int *readArray)
     ADC_MAX = max(ADC_MAX, readArray[i]);
     ADC_MIN = min(ADC_MIN, readArray[i]);
 
-    while((newCurrentms - SAMPLE_INTERVAL) < currentms){newCurrentms = micros();}
+    while((newCurrentms - currentms) < SAMPLE_INTERVAL){newCurrentms = micros();}
   } //end of for
   
   return ((ADC_MAX - ADC_MIN) * SMETER_RESOLUTION_MULTIPLIER) / SMETER_GAIN;  // return ADC_DIFF
@@ -90,8 +90,8 @@ void setup()
   nextion.Initialize();
 
   //spend time just forwaring data while everything starts up.  There is a lot of initial data to transfer.
-  unsigned long startMillis = millis() + 2000;
-  while (millis() < startMillis)
+  unsigned long startMillis = millis();
+  while (millis() - startMillis < 2000)
   {
     nextion.ForwardData();
   }
@@ -216,6 +216,7 @@ void I2CReceiveEvent(void)
 
 void I2CRequestEvent(void)
 {
+  unsigned long startMicros = micros();
   byte command = I2CCommand; // make a copy in case it case the other interrupt changes it while this is executing
 
   if (command == I2CMETER_CALCS)
@@ -226,27 +227,18 @@ void I2CRequestEvent(void)
   {
     int maxValue = 0;
     int minValue = 30000;
-    int readedValue = 0;
-    unsigned long curr = micros();
+    int adcValue = 0;
 
-    while(micros() < (curr + 1000))  // read as many as we can in 1 milllisecod.  Longer can cause issues with the communication
+    while((micros() - startMicros) < 900)  // read as many as we can in 1 alotted time.  Longer can cause issues with the timers
     {
-      readedValue = analogRead(SIGNAL_METER_ADC);;
-
-      if (readedValue > maxValue)
-      {
-        maxValue = readedValue;
-      }
-
-      if (readedValue < minValue)
-      {
-        minValue = readedValue;
-      }
+      adcValue = analogRead(SIGNAL_METER_ADC);;
+      maxValue = max(adcValue, maxValue);
+      minValue = min(adcValue, minValue);
     }
 
     // cast to a long becasue this theoretically can be 1023 * 1023, then cast it back down after the constrain
+    // Not sure why it is being squared - maintianing behavior of original code.
     long sampleDifference = (float)(maxValue - minValue) / SMETER_GAIN;
-    // Not sure why this is being squared - maintianing behavior of original code.
     Wire.write((uint8_t)constrain(sampleDifference * sampleDifference, 0, 255));
   }
   /* Notes on power and SWR
