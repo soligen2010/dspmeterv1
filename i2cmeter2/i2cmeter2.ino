@@ -38,7 +38,7 @@ int GrepADC(int readSampleCount, int *readArray)
 {
   #ifdef USE_SW_SERIAL
     // if there is data to still output then return so normal forwarding can continue.
-    // only want to sample if the SW Serial output is empty so interrupts dont disrupt sample timing.
+    // only want to sample if the SW Serial output is empty so extra interrupts dont disrupt sample timing.
     if (!SERIAL_OUTPUT.TxBufferIsEmpty())
     {
       return -1;
@@ -99,8 +99,14 @@ void setup()
 
 void loop() 
 {
-  nextion.ForwardData();  // this will not return until the input UART is empty and the we are not in the middle of a command
-    
+  while (nextion.SerialDataToProcess())
+  {
+    // This will continue to loop until and enture command is forwarded.  
+    // Only add things here if it must absolutely inlterleave with forwarding a command from the uBitx.
+    // Note that the I2C Request work cannot be moved here because Wire.Write must stay in the ISR to function correctly.
+    nextion.ForwardData();  // this will not return until the input UART is empty
+  }
+      
   //===========================================
   //Processing for when a config response has needs to be sent
   //===========================================

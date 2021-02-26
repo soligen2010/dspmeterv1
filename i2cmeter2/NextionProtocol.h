@@ -148,7 +148,8 @@ protected:
   float lastSentPower = -1;
   uint8_t LastSendScaledSMeter;
   uint8_t SMeterToUartIdleCount  = 0;
-  
+  bool nowForwardingProtocol = false;
+
   #ifdef USE_SW_SERIAL
     AltSoftSerial &SERIAL_OUTPUT;
   #endif

@@ -280,10 +280,9 @@ int NextionProtocol::ForwardData(void)
   static uint8_t nowBuffIndex = 0;   // static so value is retained between executions
   static uint8_t ForwardBuff[MAX_FORWARD_BUFF_LENGTH + 1];
 
-  bool nowSendingProtocol = false;
   uint8_t recvChar;
   
-  while (nowSendingProtocol || Serial.available() > 0) // make sure all data has been forwarded before doing anything else.
+  while (Serial.available() > 0) // make sure all data has been forwarded before doing anything else.
   {
     if (Serial.available() > 0)
     {
@@ -307,7 +306,7 @@ int NextionProtocol::ForwardData(void)
             nextionIsConnected = true;  // Set to true first time through then stays true.  This indicates commands are comming in so assume a Nextion is connected.
             //Finished Protocol
             CommandParser(ForwardBuff, nowBuffIndex);
-            nowSendingProtocol = false; //Finished 1 Set Command
+            nowForwardingProtocol = false; //Finished 1 Set Command
             etxCount = 0;
             nowBuffIndex = 0;
          }
@@ -315,7 +314,7 @@ int NextionProtocol::ForwardData(void)
         else
         {
           etxCount = 0;
-          nowSendingProtocol = true; //Sending Data
+          nowForwardingProtocol = true; //Sending Data
         }
 
       } //end of while
@@ -511,7 +510,7 @@ bool NextionProtocol::SendPowerSwr(float power, float swr, bool sendSwrAsSmeter 
 
 bool NextionProtocol::WaitUntilCommandCanBeSent()
 {
-  // Pauses an interval to gice teh nextion time to process the last command
+  // Pauses an interval to gice the nextion time to process the last command
   // returns false if the wait was aborted, in which case the send should be aborted becasue there
   // is inbound data to process
   
@@ -521,7 +520,7 @@ bool NextionProtocol::WaitUntilCommandCanBeSent()
 
 bool NextionProtocol::SerialDataToProcess()
 {
-  return (Serial.available() > 0);
+  return (Serial.available() > 0 || nowForwardingProtocol);
 }
 
 bool NextionProtocol::LastSendWaitTimeElapsed()
