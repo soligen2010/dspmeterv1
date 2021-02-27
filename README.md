@@ -93,7 +93,7 @@ I also coded things so that it is easy to change between using the hardware vs. 
 I aligned the frequency of signal peaks on the main screen vs. the DSP/CW Decode screen vs. the display in FLDigi (there was a mis-match).  They all now agree on the frequency of the peak.  As a result of this change, each line in the FFT is now
 50 Hz wide (was previously ~47) and the FFT frequency range now is 50 - 3200 Hz (previously stopped at 3000 Hz).
 
-Changes to the Nextion UI are needed ti see accurate numbers.  The WC8C UI files have this change.  To update a different Nextion UI (assuming it shared the same original code base as the WC8C UI) make the changes below.  Commented lines are the old, uncommented are new.
+Changes to the Nextion UI are needed to see accurate numbers.  The WC8C UI files have this change.  To update a different Nextion UI (assuming it shared the same original code base as the WC8C UI) make the changes below.  Commented lines are the old, uncommented are new.
 
 In screen px in Timer tm1
 ```
@@ -112,10 +112,12 @@ I was changing so much that I went ahead and did a major re-structuring and stre
 functionality is now encapsulated in classes.  I personally find this type of code structure and organization easier to work with.
 
 ### Thread Safety
-There were thread safety issues between the main loop and the I2C interrupt routines.  Most notably certain I2C commands could take over the ADC at the same time the main loop was doing a FFT.
-sample, which could disrupt the FFT sample. I changed this so that
+Note: I had to put the ADC reads back into the I2C Interrupt routine because of a limitation in the Arduino Wire library.  Things seem to work well, even though spending a full millisecond in the interrupt is generally not recommended.
+
+There were thread safety issues between the main loop and the I2C interrupt routines.  ~~Most notably certain I2C commands could take over the ADC at the same time the main loop was doing a FFT
+sample, which could disrupt the FFT sample.~~ I changed this so that
 - Used volatile variables and disabled interrupts where appropriate when updating variables used in the ISR.
-- The I2C function no longer reads the ADC - all the values needed are now read in the main loop, so use the most recent value.
+- ~~The I2C function no longer reads the ADC - all the values needed are now read in the main loop.~~
 
 ### Power & SWR Meter
 The Power and SWR meter code is not Dr. Lee's.  This version allows calibration of the power by changing values in PowerSwrCalibration.h.  Each band can be individually calibrated.
