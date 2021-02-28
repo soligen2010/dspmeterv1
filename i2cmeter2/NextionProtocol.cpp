@@ -131,8 +131,7 @@ void NextionProtocol::CommandParser(char* ForwardBuff, int lastIndex)
 
   // Return fast if not a loopback 
   // Loop back command has 13 ~ 23
-  // Protocol MAX Length : 22
-  if (lastIndex < 13 || lastIndex > 22)
+  if (lastIndex < 13 || lastIndex >= MAX_FORWARD_BUFF_LENGTH)
   {
     return;
   }
